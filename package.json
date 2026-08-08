@@ -1,0 +1,30 @@
+{
+  "name": "ai-software-engineer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@langchain/core": "^1.2.5",
+    "@langchain/groq": "^0.0.17",
+    "@langchain/langgraph": "^1.4.9",
+    "dotenv": "^17.4.2",
+    "langchain": "^1.5.5",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/marked-terminal": "^6.1.1",
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.11",
+    "typescript": "^5.9.3"
+  }
+}

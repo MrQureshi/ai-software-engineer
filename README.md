@@ -1,0 +1,83 @@
+# AI Software Engineer
+
+A TypeScript CLI agent built with [LangGraph](https://langchain-ai.github.io/langgraphjs/) and [LangChain](https://js.langchain.com/), powered by an LLM provider. Give it a plain-English feature request and it produces an implementation plan and a topic-focused code-analysis report, saved as markdown.
+
+## How it works
+
+The agent is a LangGraph state graph with three nodes:
+
+1. **Planner** — turns the user's request into a numbered implementation plan.
+2. **Inspect Repository** — scans the current repository's file structure.
+3. **Code Analyst** — produces a generic, best-practice analysis of the requested topic (installation, configuration, folder layout, tooling, testing, deployment, etc.), calling `list_files` / `read_file` tools if it needs more context.
+
+Both the plan and the code analysis are printed to the terminal (rendered with `marked-terminal`) and written to disk under `reports/`.
+
+## Prerequisites
+
+- Node.js 20+
+- An API key for your LLM provider
+
+## Setup
+
+```bash
+npm install
+```
+
+Create a `.env` file in the project root:
+
+```
+LLM_API_KEY=your_api_key_here
+```
+
+## Usage
+
+```bash
+npm start
+```
+
+You'll be prompted:
+
+```
+What would you like to build?
+```
+
+Type your request and press Enter. The agent will print an implementation plan and a code-analysis report to the console, and save both as markdown files.
+
+## Output
+
+Reports are saved under:
+
+```
+reports/
+  plan/            # implementation plans
+  codeAnalysis/     # code-analysis reports
+```
+
+Each file is named after the request, e.g. `reports/plan/implementation-plan-of-<slug>.md`.
+
+## Project structure
+
+```
+src/
+  agents/
+    softwareEngineer.ts   # LangGraph state definition
+  nodes/
+    planner.ts            # generates the implementation plan
+    inspectRepository.ts   # scans repository file structure
+    codeAnalyst.ts         # generates the code-analysis report
+  tools/
+    listFiles.ts
+    readFile.ts
+    calculator.ts
+    getTime.ts
+  graph.ts                 # wires the nodes into a LangGraph graph
+  index.ts                 # CLI entry point
+```
+
+## Tech stack
+
+- [LangGraph](https://langchain-ai.github.io/langgraphjs/) / [LangChain](https://js.langchain.com/) — agent orchestration
+- [Groq](https://groq.com/) (`@langchain/groq`) — LLM inference
+- [Zod](https://zod.dev/) — schema validation
+- [tsx](https://github.com/privatenumber/tsx) — TypeScript execution
+- [marked](https://marked.js.org/) / [marked-terminal](https://github.com/mikaelbr/marked-terminal) — markdown rendering in the terminal
