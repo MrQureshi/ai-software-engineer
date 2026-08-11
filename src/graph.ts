@@ -9,13 +9,12 @@ import { codeAnalystNode } from "./nodes/codeAnalyst.js";
 
 import { listFilesTool } from "./tools/listFiles.js";
 import { readFileTool } from "./tools/readFile.js";
+import { searchCodeTool } from "./tools/searchCode.js";
 
 import { inspectRepositoryNode } from "./nodes/inspectRepository.js";
 
-// const tools = [listFilesTool];
-const tools = [listFilesTool, readFileTool];
+const tools = [listFilesTool, readFileTool, searchCodeTool];
 
-// const toolNode = new ToolNode(tools);
 const toolNode = new ToolNode(tools);
 
 function shouldContinue(state: typeof SoftwareEngineerState.State) {

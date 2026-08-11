@@ -41,5 +41,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["src/graph-old.ts", "src/index-old.ts"]
+  "exclude": ["test/fixtures/**"]
 }

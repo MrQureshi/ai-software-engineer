@@ -10,3 +10,5 @@ npm-debug.log*
 
 dist/
 build/
+
+docs/

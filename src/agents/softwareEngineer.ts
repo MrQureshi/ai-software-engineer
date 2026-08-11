@@ -19,6 +19,11 @@ export const SoftwareEngineerState = Annotation.Root({
     value: (_existing, newValue) => newValue,
     default: () => "",
   }),
+
+  analysisIterations: Annotation<number>({
+    value: (_existing, newValue) => newValue,
+    default: () => 0,
+  }),
 });
 
 export type SoftwareEngineerStateType = typeof SoftwareEngineerState.State;

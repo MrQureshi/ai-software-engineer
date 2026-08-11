@@ -62,9 +62,27 @@ const analysisDir = path.resolve("reports/codeAnalysis");
 fs.mkdirSync(planDir, { recursive: true });
 fs.mkdirSync(analysisDir, { recursive: true });
 
+function nextSequenceNumber(...dirs: string[]): number {
+  let highest = 0;
+
+  for (const dir of dirs) {
+    for (const entry of fs.readdirSync(dir)) {
+      const match = entry.match(/^(\d+)-/);
+      if (match) {
+        highest = Math.max(highest, Number(match[1]));
+      }
+    }
+  }
+
+  return highest + 1;
+}
+
+const sequence = String(nextSequenceNumber(planDir, analysisDir)).padStart(2, "0");
+const reportName = `${sequence}-${topic}.md`;
+
 const planContent = `# IMPLEMENTATION PLAN\n\n${result.plan.map((task: string, i: number) => `${i + 1}. ${task}`).join("\n")}\n`;
-fs.writeFileSync(path.join(planDir, `implementation-plan-of-${topic}.md`), planContent);
+fs.writeFileSync(path.join(planDir, reportName), planContent);
 
-fs.writeFileSync(path.join(analysisDir, `code-analysis-of-${topic}.md`), `# CODE ANALYSIS\n\n${result.codeAnalysis}\n`);
+fs.writeFileSync(path.join(analysisDir, reportName), `# CODE ANALYSIS\n\n${result.codeAnalysis}\n`);
 
-console.log(`\nReports saved:\n  reports/plan/implementation-plan-of-${topic}.md\n  reports/codeAnalysis/code-analysis-of-${topic}.md`);
+console.log(`\nReports saved:\n  reports/plan/${reportName}\n  reports/codeAnalysis/${reportName}`);
