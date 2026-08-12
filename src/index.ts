@@ -4,6 +4,7 @@ import readline from "readline";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 import { softwareEngineer, RECURSION_LIMIT } from "./graph.js";
+import { getTracingProject, isTracingEnabled } from "./lib/langsmith.js";
 
 // Silence the built-in `punycode` deprecation warning triggered by an old
 // transitive dependency (groq-sdk -> node-fetch@2 -> whatwg-url@5).
@@ -16,6 +17,14 @@ process.on("warning", (warning) => {
 });
 
 marked.use(markedTerminal() as Parameters<typeof marked.use>[0]);
+
+if (isTracingEnabled()) {
+  console.log(`[LangSmith] Tracing enabled — project "${getTracingProject()}".`);
+} else {
+  console.log(
+    "[LangSmith] Tracing disabled (set LANGSMITH_TRACING=true and LANGSMITH_API_KEY in .env to enable).",
+  );
+}
 
 const userRequest = await new Promise<string>((resolve) => {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -30,7 +39,11 @@ let result;
 try {
   result = await softwareEngineer.invoke(
     { userRequest },
-    { recursionLimit: RECURSION_LIMIT },
+    {
+      recursionLimit: RECURSION_LIMIT,
+      runName: "Software Engineer Agent",
+      metadata: { userRequest },
+    },
   );
 } catch (error) {
   console.error(

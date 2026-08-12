@@ -3,14 +3,21 @@ dotenv.config();
 
 import { ChatGroq } from "@langchain/groq";
 
-import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import {
+  AIMessage,
+  HumanMessage,
+  SystemMessage,
+} from "@langchain/core/messages";
 
 import type { SoftwareEngineerStateType } from "../agents/softwareEngineer.js";
 
 import { listFilesTool } from "../tools/listFiles.js";
 import { readFileTool } from "../tools/readFile.js";
 import { searchCodeTool } from "../tools/searchCode.js";
-import { describeToolCallError, invokeWithRetry } from "../lib/invokeWithRetry.js";
+import {
+  describeToolCallError,
+  invokeWithRetry,
+} from "../lib/invokeWithRetry.js";
 
 const model = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -100,7 +107,9 @@ ${state.repositoryFiles}
   try {
     response = await invokeWithRetry(
       (msgs) =>
-        modelWithTools.invoke(msgs as Parameters<typeof modelWithTools.invoke>[0]),
+        modelWithTools.invoke(
+          msgs as Parameters<typeof modelWithTools.invoke>[0],
+        ),
       messages,
       { maxRetries: MAX_INVOKE_RETRIES, logPrefix: "[Code Analyst]" },
     );
