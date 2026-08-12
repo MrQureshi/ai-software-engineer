@@ -11,6 +11,10 @@ model, and only because everything *upstream* of the Tester in the graph
 does.
 
 Spec reference: [`17-tester-node-spec.md`](../../docs/17-tester-node-spec.md).
+For the retry loop this node now drives when tests fail, see
+[`test/debugger-tester-loop/`](../debugger-tester-loop/debugger-tester-loop-manual-test.md)
+and [`18-debugger-tester-loop-spec.md`](../../docs/18-debugger-tester-loop-spec.md) —
+this doc stays focused on the Tester node itself.
 
 ---
 
@@ -32,7 +36,7 @@ Spec reference: [`17-tester-node-spec.md`](../../docs/17-tester-node-spec.md).
 npx tsx test/tester/run-tester-test.mts
 ```
 
-This runs 14 checks end-to-end and prints `PASS`/`FAIL` per check, plus
+This runs 17 checks end-to-end and prints `PASS`/`FAIL` per check, plus
 a summary line, exiting non-zero if anything failed. Each check builds a
 throwaway fixture project (its own `package.json`, sometimes a
 `tsconfig.json`), `chdir`s into it, invokes the tool or node under test,
@@ -53,10 +57,16 @@ means actually changing directory, not passing a parameter.
 | 8 | `run_typecheck` prefers an explicit `"typecheck"` script over falling back to `tsc`, even when a `tsconfig.json` is also present | Script beats fallback, not the other way around |
 | 9 | `run_typecheck` falls back to `npx tsc --noEmit` and reports `PASS` on valid code, when no script is defined | The fallback path actually works, not just the script path |
 | 10 | `run_typecheck` falls back to `tsc` and reports `FAIL` on a real type error | Fallback path catches real errors too |
-| 11–12 | `testerNode()` end-to-end: `testsPassed: true` and no `Errors:` section when nothing fails | The aggregate node, not just the tools in isolation |
-| 13–14 | `testerNode()` end-to-end: `testsPassed: false` and an `Errors:` section naming the failing category when one fails | |
+| 11–13 | `testerNode(state)` end-to-end: `testsPassed: true`, no `Errors:` section, and `debugAttempts`/`debugIterations` left untouched when nothing fails | The aggregate node, not just the tools in isolation — and no loop "attempt" is spent on a pass |
+| 14–17 | `testerNode(state)` end-to-end: `testsPassed: false`, an `Errors:` section naming the failing category, `debugAttempts` incremented, and `debugIterations` reset to `0` when one fails | The bookkeeping the Debugger ↔ Tester loop depends on — see [`test/debugger-tester-loop/`](../debugger-tester-loop/debugger-tester-loop-manual-test.md) for the loop itself |
 
-Expected final line: `14 passed, 0 failed`.
+Expected final line: `17 passed, 0 failed`.
+
+**Note on `testerNode`'s signature:** it now takes a `state` argument
+(previously took none) — added for the Debugger ↔ Tester loop, so it
+can read the running `debugAttempts` count and return the incremented
+value on failure. This is why every call to it in this doc, and in the
+suite, passes a state object rather than nothing.
 
 **Note on fixture placement:** fixtures are created *inside*
 `test/tester/` (via `fs.mkdtemp`), not under the OS temp directory. This
@@ -81,7 +91,7 @@ project, from the **project root**:
 npx tsx -e '
 (async () => {
   const { testerNode } = await import("./src/nodes/tester.ts");
-  console.log(JSON.stringify(await testerNode(), null, 2));
+  console.log(JSON.stringify(await testerNode({ debugAttempts: 0 }), null, 2));
 })();
 '
 ```
@@ -90,7 +100,12 @@ npx tsx -e '
 it fails with `Top-level await is currently not supported with the
 "cjs" output format` regardless of shell. The async-IIFE-plus-dynamic-
 `import()` form above sidesteps that; alternatively, save the block to
-a `.mts` file and run it with `npx tsx <file>`.)
+a `.mts` file and run it with `npx tsx <file>`. `testerNode` also now
+takes a `state` argument as of the Debugger ↔ Tester loop — see the
+Section 1 note below the table — so it can bump `debugAttempts`/reset
+`debugIterations` on failure; `{ debugAttempts: 0 }` is enough for a
+one-off check like this since nothing else in the function reads any
+other field.)
 
 **Expected output right now, for this repository specifically:**
 
@@ -126,8 +141,9 @@ should still hold).
 ## 3. Full Agent Check (through the graph)
 
 To confirm the Tester node actually runs at its place in the graph —
-after the Debugger, right before `END` — and that its output reaches the
-terminal and a saved report:
+after the Debugger, looping back to it on failure (see
+[`test/debugger-tester-loop/`](../debugger-tester-loop/debugger-tester-loop-manual-test.md))
+— and that its output reaches the terminal and a saved report:
 
 ```bash
 npm start
@@ -138,7 +154,12 @@ npm start
 
 **Watch the terminal for, in order:** the usual `IMPLEMENTATION PLAN` /
 `CODE ANALYSIS` / `IMPLEMENTATION` / `DEBUGGING` / `CHANGED FILES`
-sections, then:
+sections, then the styled `TEST RESULTS` section below. Before that
+final section, you may now see **more than one** `[Tester]` block go by
+in the raw log — one per pass through the loop, if the first check
+failed and the graph retried. That's expected, not a duplicate run; the
+styled section itself still appears exactly once, reflecting only the
+*last* pass (see Section 4).
 
 ```text
 ====================
@@ -180,7 +201,12 @@ Implementation Agent, and Debugger to all fall back to their
 "could not be completed" messages). The Tester's output doesn't depend
 on anything those stages produced — it only ever inspects the real
 `package.json`/`tsconfig.json` on disk — so a bad LLM day upstream
-doesn't take it down too.
+doesn't take it down too. This held up even under the loop: a live run
+with Groq fully rate-limited the entire time still cycled through all
+`1 + MAX_DEBUG_ATTEMPTS` Debugger/Tester passes and reached `END`
+cleanly — see
+[`test/debugger-tester-loop/`](../debugger-tester-loop/debugger-tester-loop-manual-test.md)
+for that scenario in detail.
 
 ---
 
@@ -193,10 +219,12 @@ worth knowing before mistaking any of these for a regression:
   category is `SKIPPED`, `testsPassed` is still `true` — `SKIPPED`
   never counts as a failure. The boolean alone can't tell "verified
   working" apart from "nothing was checked"; read `testReport` for that.
-- **Not wired into a loop.** The Tester always runs exactly once, after
-  the Debugger, and the graph always ends after it regardless of
-  `testsPassed`. There's no retry-on-failure yet — that's Phase 7
-  (`01-ai-software-engineer-plan.md` §20), separate future work.
+- **Now wired into a loop (Phase 7, complete).** On failure the Tester
+  hands back to the Debugger for up to `MAX_DEBUG_ATTEMPTS` (3) retries
+  before giving up — see
+  [`test/debugger-tester-loop/`](../debugger-tester-loop/debugger-tester-loop-manual-test.md)
+  for that behavior specifically; this doc only covers the Tester node
+  in isolation.
 - **`npm test` runs whatever script is there, placeholder or not.** See
   Section 2 above.
 
@@ -212,7 +240,7 @@ npx tsx test/tester/run-tester-test.mts
 npx tsx -e '
 (async () => {
   const { testerNode } = await import("./src/nodes/tester.ts");
-  console.log(JSON.stringify(await testerNode(), null, 2));
+  console.log(JSON.stringify(await testerNode({ debugAttempts: 0 }), null, 2));
 })();
 '
 

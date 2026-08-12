@@ -8,7 +8,7 @@ import { plannerNode } from "./nodes/planner.js";
 import { codeAnalystNode, MAX_ANALYSIS_ITERATIONS } from "./nodes/codeAnalyst.js";
 import { implementationNode, MAX_IMPLEMENTATION_ITERATIONS } from "./nodes/implementation.js";
 import { debuggerNode, MAX_DEBUG_ITERATIONS } from "./nodes/debugger.js";
-import { testerNode } from "./nodes/tester.js";
+import { testerNode, MAX_DEBUG_ATTEMPTS } from "./nodes/tester.js";
 
 import { listFilesTool } from "./tools/listFiles.js";
 import { readFileTool } from "./tools/readFile.js";
@@ -48,6 +48,18 @@ function shouldContinueImplementation(state: typeof SoftwareEngineerState.State)
 
 function shouldContinueDebug(state: typeof SoftwareEngineerState.State) {
   return hasPendingToolCalls(state) ? "debugTools" : "tester";
+}
+
+/**
+ * Not tool-call-shaped like the other three routing functions — the
+ * Debugger ↔ Tester loop isn't a message/tool-call loop, it's an
+ * attempt-count loop. Still a pure read of state with no side effects,
+ * per the contract in 04-graph-spec.md §5 — just a different concrete
+ * check. See 18-debugger-tester-loop-spec.md §5.
+ */
+function shouldRetryAfterTests(state: typeof SoftwareEngineerState.State) {
+  if (state.testsPassed) return END; // Reviewer doesn't exist yet (Phase 8)
+  return state.debugAttempts > MAX_DEBUG_ATTEMPTS ? END : "debugger";
 }
 
 const graph = new StateGraph(SoftwareEngineerState)
@@ -99,7 +111,10 @@ const graph = new StateGraph(SoftwareEngineerState)
 
   .addEdge("debugTools", "debugger")
 
-  .addEdge("tester", END);
+  .addConditionalEdges("tester", shouldRetryAfterTests, {
+    debugger: "debugger",
+    [END]: END,
+  });
 
 export const softwareEngineer = graph.compile();
 
@@ -107,20 +122,26 @@ export const softwareEngineer = graph.compile();
  * LangGraph counts every node execution (including tool nodes) as one
  * step toward its own global recursion limit — separate from, and not
  * automatically aware of, any loop's own iteration cap. Each pass
- * through a loop costs 2 steps (the looping node + its tool node), so
- * the worst case across all three loops is:
- *   planner + inspectRepository + tester (3, non-looping)
+ * through a tool-calling loop costs 2 steps (the looping node + its
+ * tool node); the Debugger ↔ Tester loop (18-debugger-tester-loop-spec.md)
+ * can additionally repeat the whole Debugger loop-plus-one-Tester-step
+ * unit up to MAX_DEBUG_ATTEMPTS times on top of the first pass. Worst
+ * case across everything:
+ *   planner + inspectRepository (2, non-looping)
  *   + 2 * MAX_ANALYSIS_ITERATIONS
  *   + 2 * MAX_IMPLEMENTATION_ITERATIONS
- *   + 2 * MAX_DEBUG_ITERATIONS
- * LangGraph's default limit (25) is well below this once all three loops
- * are built — a run can legitimately need more steps than that without
- * any loop misbehaving, so this must be raised accordingly (plus a
- * small safety margin) rather than left at the default.
+ *   + (1 + MAX_DEBUG_ATTEMPTS) * (2 * MAX_DEBUG_ITERATIONS + 1)
+ *     — the "+1" per unit is the Tester's own single step; the
+ *     "1 +" accounts for the first Debugger/Tester pass plus up to
+ *     MAX_DEBUG_ATTEMPTS retries
+ * LangGraph's default limit (25) is well below this once every loop is
+ * built — a run can legitimately need more steps than that without any
+ * loop misbehaving, so this must be raised accordingly (plus a small
+ * safety margin) rather than left at the default.
  */
 export const RECURSION_LIMIT =
-  3 +
+  2 +
   2 * MAX_ANALYSIS_ITERATIONS +
   2 * MAX_IMPLEMENTATION_ITERATIONS +
-  2 * MAX_DEBUG_ITERATIONS +
+  (1 + MAX_DEBUG_ATTEMPTS) * (2 * MAX_DEBUG_ITERATIONS + 1) +
   4;

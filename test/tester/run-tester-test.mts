@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,102 +5,57 @@ import { runTestsTool } from "../../src/tools/runTests.js";
 import { runLintTool } from "../../src/tools/runLint.js";
 import { runTypecheckTool } from "../../src/tools/runTypecheck.js";
 import { testerNode } from "../../src/nodes/tester.js";
+import type { SoftwareEngineerStateType } from "../../src/agents/softwareEngineer.js";
+import { createChecker } from "../support/checker.js";
+import { packageJson, withProject } from "../support/withProject.js";
+
+function fakeState(overrides: Partial<SoftwareEngineerStateType>): SoftwareEngineerStateType {
+  return overrides as SoftwareEngineerStateType;
+}
 
 const TESTER_DIR = path.dirname(fileURLToPath(import.meta.url));
-
-let passed = 0;
-let failed = 0;
-
-function check(label: string, condition: boolean, detail?: string) {
-  if (condition) {
-    console.log(`PASS - ${label}`);
-    passed++;
-  } else {
-    console.log(`FAIL - ${label}${detail ? ` (${detail})` : ""}`);
-    failed++;
-  }
-}
-
-/**
- * Every tool under test resolves paths off process.cwd() (matching how
- * the Tester node itself always inspects the real project root, not a
- * caller-supplied directory), so exercising different package.json/
- * tsconfig.json scenarios means actually chdir-ing into a fixture
- * project — not just passing a directory argument.
- *
- * The fixture is created under test/tester/ itself (not os.tmpdir())
- * so `npx tsc` resolves this project's own local `typescript` via
- * ancestor node_modules resolution, instead of trying to install one
- * from the network for an isolated temp directory.
- */
-async function withProject(
-  files: Record<string, string>,
-  fn: () => Promise<void>,
-) {
-  const dir = await fs.mkdtemp(path.join(TESTER_DIR, ".tmp-fixture-"));
-  const originalCwd = process.cwd();
-
-  try {
-    for (const [relPath, content] of Object.entries(files)) {
-      const full = path.join(dir, relPath);
-      await fs.mkdir(path.dirname(full), { recursive: true });
-      await fs.writeFile(full, content, "utf-8");
-    }
-
-    process.chdir(dir);
-    await fn();
-  } finally {
-    process.chdir(originalCwd);
-    await fs.rm(dir, { recursive: true, force: true });
-  }
-}
-
-function pkg(scripts: Record<string, string>): string {
-  return JSON.stringify(
-    { name: "fixture", version: "1.0.0", scripts },
-    null,
-    2,
-  );
-}
+const { check, finish } = createChecker();
+const project = (files: Record<string, string>, fn: () => Promise<void>) =>
+  withProject(TESTER_DIR, files, fn);
 
 async function main() {
   // --- run_tests ---
 
-  await withProject({ "package.json": pkg({}) }, async () => {
+  await project({ "package.json": packageJson({}) }, async () => {
     const r = await runTestsTool.invoke({});
     check("run_tests: SKIPPED when no test script", String(r).startsWith("SKIPPED"), String(r));
   });
 
-  await withProject({ "package.json": pkg({ test: "exit 0" }) }, async () => {
+  await project({ "package.json": packageJson({ test: "exit 0" }) }, async () => {
     const r = await runTestsTool.invoke({});
     check("run_tests: PASS when test script exits 0", String(r) === "PASS: npm test", String(r));
   });
 
-  await withProject({ "package.json": pkg({ test: "exit 1" }) }, async () => {
+  await project({ "package.json": packageJson({ test: "exit 1" }) }, async () => {
     const r = String(await runTestsTool.invoke({}));
     check("run_tests: FAIL when test script exits non-zero", r.startsWith("FAIL: npm test (exit code 1)"), r);
   });
 
   // --- run_lint ---
 
-  await withProject({ "package.json": pkg({}) }, async () => {
+  await project({ "package.json": packageJson({}) }, async () => {
     const r = await runLintTool.invoke({});
     check("run_lint: SKIPPED when no lint script", String(r).startsWith("SKIPPED"), String(r));
   });
 
-  await withProject({ "package.json": pkg({ lint: "exit 0" }) }, async () => {
+  await project({ "package.json": packageJson({ lint: "exit 0" }) }, async () => {
     const r = await runLintTool.invoke({});
     check("run_lint: PASS when lint script exits 0", String(r) === "PASS: npm run lint", String(r));
   });
 
-  await withProject({ "package.json": pkg({ lint: "exit 1" }) }, async () => {
+  await project({ "package.json": packageJson({ lint: "exit 1" }) }, async () => {
     const r = String(await runLintTool.invoke({}));
     check("run_lint: FAIL when lint script exits non-zero", r.startsWith("FAIL: npm run lint (exit code 1)"), r);
   });
 
   // --- run_typecheck ---
 
-  await withProject({ "package.json": pkg({}) }, async () => {
+  await project({ "package.json": packageJson({}) }, async () => {
     const r = await runTypecheckTool.invoke({});
     check(
       "run_typecheck: SKIPPED when no typecheck script and no tsconfig.json",
@@ -110,9 +64,9 @@ async function main() {
     );
   });
 
-  await withProject(
+  await project(
     {
-      "package.json": pkg({ typecheck: "exit 0" }),
+      "package.json": packageJson({ typecheck: "exit 0" }),
       "tsconfig.json": "{}",
     },
     async () => {
@@ -134,9 +88,9 @@ async function main() {
     compilerOptions: { strict: true, types: [] },
   });
 
-  await withProject(
+  await project(
     {
-      "package.json": pkg({}),
+      "package.json": packageJson({}),
       "tsconfig.json": isolatedTsconfig,
       "index.ts": "const x = 1;\n",
     },
@@ -150,9 +104,9 @@ async function main() {
     },
   );
 
-  await withProject(
+  await project(
     {
-      "package.json": pkg({}),
+      "package.json": packageJson({}),
       "tsconfig.json": isolatedTsconfig,
       "index.ts": 'const x: number = "not a number";\n',
     },
@@ -168,34 +122,48 @@ async function main() {
 
   // --- testerNode (aggregate, still no LLM) ---
 
-  await withProject(
-    { "package.json": pkg({ test: "exit 0" }) },
+  await project(
+    { "package.json": packageJson({ test: "exit 0" }) },
     async () => {
-      const result = await testerNode();
+      const result = await testerNode(fakeState({ debugAttempts: 2 }));
       check("testerNode: testsPassed true when nothing fails", result.testsPassed === true);
       check(
         "testerNode: report has no Errors section when nothing fails",
         !result.testReport.includes("Errors:"),
         result.testReport,
       );
+      check(
+        "testerNode: does not touch debugAttempts/debugIterations when passing (no attempt used)",
+        !("debugAttempts" in result) && !("debugIterations" in result),
+        JSON.stringify(result),
+      );
     },
   );
 
-  await withProject(
-    { "package.json": pkg({ test: "exit 1" }) },
+  await project(
+    { "package.json": packageJson({ test: "exit 1" }) },
     async () => {
-      const result = await testerNode();
+      const result = await testerNode(fakeState({ debugAttempts: 1, debugIterations: 7 }));
       check("testerNode: testsPassed false when a category fails", result.testsPassed === false);
       check(
         "testerNode: report includes an Errors section for the failing category",
         result.testReport.includes("Errors:") && result.testReport.includes("Tests:\nFAIL"),
         result.testReport,
       );
+      check(
+        "testerNode: increments debugAttempts on failure (loop bookkeeping)",
+        result.debugAttempts === 2,
+        String(result.debugAttempts),
+      );
+      check(
+        "testerNode: resets debugIterations to 0 on failure (fresh budget for the retry)",
+        result.debugIterations === 0,
+        String(result.debugIterations),
+      );
     },
   );
 
-  console.log(`\n${passed} passed, ${failed} failed`);
-  if (failed > 0) process.exit(1);
+  finish();
 }
 
 main();

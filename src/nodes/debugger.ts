@@ -128,7 +128,11 @@ ${state.implementation}
 Files changed so far:
 
 ${state.changedFiles.length > 0 ? state.changedFiles.join("\n") : "(none)"}
-`),
+${
+  state.testReport
+    ? `\nThe Tester already ran and found this still failing — fix this specifically rather than starting from scratch:\n\n${state.testReport}\n`
+    : ""
+}`),
 
     ...state.messages,
   ];

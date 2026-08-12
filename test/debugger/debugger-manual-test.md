@@ -10,6 +10,12 @@ this one, see
 
 Spec reference:
 [`16-debugger-node-spec.md`](../../docs/16-debugger-node-spec.md).
+For what happens when the Tester sends a run back here for a retry —
+including the Debugger's prompt now folding in the Tester's own failure
+report as grounding — see
+[`test/debugger-tester-loop/`](../debugger-tester-loop/debugger-tester-loop-manual-test.md)
+and [`18-debugger-tester-loop-spec.md`](../../docs/18-debugger-tester-loop-spec.md);
+this doc only covers a single Debugger pass in isolation.
 
 ---
 

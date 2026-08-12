@@ -1,9 +1,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import type { SoftwareEngineerStateType } from "../agents/softwareEngineer.js";
+
 import { runTestsTool } from "../tools/runTests.js";
 import { runTypecheckTool } from "../tools/runTypecheck.js";
 import { runLintTool } from "../tools/runLint.js";
+
+export const MAX_DEBUG_ATTEMPTS = 3;
 
 type Status = "PASS" | "FAIL" | "SKIPPED";
 
@@ -19,7 +23,7 @@ function parseResult(raw: string): { status: Status; detail: string } {
   return { status: "FAIL", detail: raw };
 }
 
-export async function testerNode() {
+export async function testerNode(state: SoftwareEngineerStateType) {
   const [testsRaw, typecheckRaw, lintRaw] = [
     String(await runTestsTool.invoke({})),
     String(await runTypecheckTool.invoke({})),
@@ -42,6 +46,7 @@ export async function testerNode() {
   );
 
   const failures = categories.filter((c) => c.status === "FAIL");
+  const passed = failures.length === 0;
 
   const report =
     failures.length === 0
@@ -50,8 +55,19 @@ export async function testerNode() {
           .map((f) => `${f.label}:\n${f.raw}`)
           .join("\n\n")}`;
 
+  if (passed) {
+    return { testReport: report, testsPassed: true };
+  }
+
+  // Failed: hand the run back to the Debugger for another attempt (the
+  // graph's routing function enforces MAX_DEBUG_ATTEMPTS, this node just
+  // does the bookkeeping). debugIterations resets to 0 so the Debugger's
+  // next pass gets a full fresh tool-calling budget rather than starting
+  // already close to its own cap from the previous attempt.
   return {
     testReport: report,
-    testsPassed: failures.length === 0,
+    testsPassed: false,
+    debugAttempts: (state.debugAttempts ?? 0) + 1,
+    debugIterations: 0,
   };
 }
