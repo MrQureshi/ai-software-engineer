@@ -1,16 +1,11 @@
-import { ChatGroq } from "@langchain/groq";
-
 import type { SoftwareEngineerStateType } from "../agents/softwareEngineer.js";
+import { createModel } from "../lib/model.js";
 
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const model = new ChatGroq({
-  apiKey: process.env.GROQ_API_KEY,
-  model: "openai/gpt-oss-120b",
-  temperature: 0,
-});
+const model = createModel();
 
 export async function plannerNode(state: SoftwareEngineerStateType) {
   const response = await model.invoke([

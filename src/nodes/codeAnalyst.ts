@@ -1,8 +1,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { ChatGroq } from "@langchain/groq";
-
 import {
   AIMessage,
   HumanMessage,
@@ -18,12 +16,9 @@ import {
   describeToolCallError,
   invokeWithRetry,
 } from "../lib/invokeWithRetry.js";
+import { createModel } from "../lib/model.js";
 
-const model = new ChatGroq({
-  apiKey: process.env.GROQ_API_KEY,
-  model: "openai/gpt-oss-120b",
-  temperature: 0,
-});
+const model = createModel();
 
 const tools = [listFilesTool, readFileTool, searchCodeTool];
 
