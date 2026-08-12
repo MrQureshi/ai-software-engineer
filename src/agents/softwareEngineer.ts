@@ -25,6 +25,11 @@ export const SoftwareEngineerState = Annotation.Root({
     default: () => 0,
   }),
 
+  analysisCapped: Annotation<boolean>({
+    value: (_existing, newValue) => newValue,
+    default: () => false,
+  }),
+
   implementation: Annotation<string>({
     value: (_existing, newValue) => newValue,
     default: () => "",

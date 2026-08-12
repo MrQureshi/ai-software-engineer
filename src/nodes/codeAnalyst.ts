@@ -41,6 +41,7 @@ export async function codeAnalystNode(state: SoftwareEngineerStateType) {
       messages: [cappedMessage],
       codeAnalysis: cappedMessage.content as string,
       analysisIterations: iteration,
+      analysisCapped: true,
     };
   }
 
