@@ -24,6 +24,21 @@ export const SoftwareEngineerState = Annotation.Root({
     value: (_existing, newValue) => newValue,
     default: () => 0,
   }),
+
+  implementation: Annotation<string>({
+    value: (_existing, newValue) => newValue,
+    default: () => "",
+  }),
+
+  changedFiles: Annotation<string[]>({
+    value: (_existing, newValue) => newValue,
+    default: () => [],
+  }),
+
+  implementationIterations: Annotation<number>({
+    value: (_existing, newValue) => newValue,
+    default: () => 0,
+  }),
 });
 
 export type SoftwareEngineerStateType = typeof SoftwareEngineerState.State;

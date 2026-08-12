@@ -3,18 +3,14 @@ dotenv.config();
 
 import { ChatGroq } from "@langchain/groq";
 
-import {
-  AIMessage,
-  HumanMessage,
-  SystemMessage,
-  type BaseMessage,
-} from "@langchain/core/messages";
+import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 import type { SoftwareEngineerStateType } from "../agents/softwareEngineer.js";
 
 import { listFilesTool } from "../tools/listFiles.js";
 import { readFileTool } from "../tools/readFile.js";
 import { searchCodeTool } from "../tools/searchCode.js";
+import { describeToolCallError, invokeWithRetry } from "../lib/invokeWithRetry.js";
 
 const model = new ChatGroq({
   apiKey: process.env.GROQ_API_KEY,
@@ -27,68 +23,7 @@ const tools = [listFilesTool, readFileTool, searchCodeTool];
 const modelWithTools = model.bindTools(tools);
 
 const MAX_INVOKE_RETRIES = 2;
-const MAX_ANALYSIS_ITERATIONS = 8;
-
-/**
- * Groq rejects a tool call before it ever reaches our tool code when the
- * model supplies arguments that don't match the tool's schema (extra
- * fields, wrong types, an unknown tool name). That surfaces as a thrown
- * BadRequestError from the SDK rather than a normal model response, so it
- * can't be handled by the ToolNode's ordinary error-as-tool-result
- * pattern. This narrows that specific, recoverable case; anything else
- * (auth failure, network error, rate limit) is left to propagate.
- */
-function describeToolCallError(error: unknown): string | undefined {
-  if (typeof error !== "object" || error === null) return undefined;
-
-  const err = error as {
-    status?: number;
-    error?: { error?: { message?: string; code?: string } };
-  };
-
-  if (err.status !== 400) return undefined;
-
-  const message = err.error?.error?.message;
-  const code = err.error?.error?.code;
-
-  if (!message) return undefined;
-  if (code !== "tool_use_failed" && !message.toLowerCase().includes("tool call")) {
-    return undefined;
-  }
-
-  return message;
-}
-
-async function invokeWithRetry(messages: BaseMessage[]) {
-  let currentMessages = messages;
-
-  for (let attempt = 0; attempt <= MAX_INVOKE_RETRIES; attempt++) {
-    try {
-      return await modelWithTools.invoke(
-        currentMessages as Parameters<typeof modelWithTools.invoke>[0],
-      );
-    } catch (error) {
-      const description = describeToolCallError(error);
-
-      if (!description || attempt === MAX_INVOKE_RETRIES) {
-        throw error;
-      }
-
-      console.warn(
-        `\n[Code Analyst] Invalid tool call from model (attempt ${attempt + 1}/${MAX_INVOKE_RETRIES}): ${description}`,
-      );
-
-      currentMessages = [
-        ...currentMessages,
-        new HumanMessage(
-          `Your previous tool call was invalid: ${description}. Retry with arguments that match the tool's schema exactly (only the documented fields, correct types), or answer without using a tool.`,
-        ),
-      ];
-    }
-  }
-
-  throw new Error("unreachable");
-}
+export const MAX_ANALYSIS_ITERATIONS = 8;
 
 export async function codeAnalystNode(state: SoftwareEngineerStateType) {
   const iteration = (state.analysisIterations ?? 0) + 1;
@@ -162,7 +97,12 @@ ${state.repositoryFiles}
   let response;
 
   try {
-    response = await invokeWithRetry(messages);
+    response = await invokeWithRetry(
+      (msgs) =>
+        modelWithTools.invoke(msgs as Parameters<typeof modelWithTools.invoke>[0]),
+      messages,
+      { maxRetries: MAX_INVOKE_RETRIES, logPrefix: "[Code Analyst]" },
+    );
   } catch (error) {
     const description =
       describeToolCallError(error) ??

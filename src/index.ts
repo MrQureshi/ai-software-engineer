@@ -3,7 +3,7 @@ import path from "path";
 import readline from "readline";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
-import { softwareEngineer } from "./graph.js";
+import { softwareEngineer, RECURSION_LIMIT } from "./graph.js";
 
 // Silence the built-in `punycode` deprecation warning triggered by an old
 // transitive dependency (groq-sdk -> node-fetch@2 -> whatwg-url@5).
@@ -25,7 +25,21 @@ const userRequest = await new Promise<string>((resolve) => {
   });
 });
 
-const result = await softwareEngineer.invoke({ userRequest });
+let result;
+
+try {
+  result = await softwareEngineer.invoke(
+    { userRequest },
+    { recursionLimit: RECURSION_LIMIT },
+  );
+} catch (error) {
+  console.error(
+    `\nThe agent could not complete this request: ${
+      error instanceof Error ? error.message : String(error)
+    }`,
+  );
+  process.exit(1);
+}
 
 // --- console output ---
 
@@ -43,6 +57,22 @@ console.log("====================\n");
 
 console.log(marked(result.codeAnalysis));
 
+console.log("\n====================");
+console.log("IMPLEMENTATION");
+console.log("====================\n");
+
+console.log(marked(result.implementation));
+
+console.log("\n====================");
+console.log("CHANGED FILES");
+console.log("====================\n");
+
+if (result.changedFiles.length === 0) {
+  console.log("(none)");
+} else {
+  result.changedFiles.forEach((file: string) => console.log(`- ${file}`));
+}
+
 // --- save reports ---
 
 const stopWords = new Set(["add", "a", "an", "the", "to", "my", "your", "our", "in", "on", "for", "of", "with", "and", "or"]);
@@ -56,11 +86,13 @@ const topic = userRequest
   .slice(0, 4)
   .join("-");
 
-const planDir = path.resolve("reports/plan");
-const analysisDir = path.resolve("reports/codeAnalysis");
+const planDir = path.resolve("reports/01-plan");
+const analysisDir = path.resolve("reports/02-codeAnalysis");
+const implementationDir = path.resolve("reports/03-implementation");
 
 fs.mkdirSync(planDir, { recursive: true });
 fs.mkdirSync(analysisDir, { recursive: true });
+fs.mkdirSync(implementationDir, { recursive: true });
 
 function nextSequenceNumber(...dirs: string[]): number {
   let highest = 0;
@@ -77,7 +109,9 @@ function nextSequenceNumber(...dirs: string[]): number {
   return highest + 1;
 }
 
-const sequence = String(nextSequenceNumber(planDir, analysisDir)).padStart(2, "0");
+const sequence = String(
+  nextSequenceNumber(planDir, analysisDir, implementationDir),
+).padStart(2, "0");
 const reportName = `${sequence}-${topic}.md`;
 
 const planContent = `# IMPLEMENTATION PLAN\n\n${result.plan.map((task: string, i: number) => `${i + 1}. ${task}`).join("\n")}\n`;
@@ -85,4 +119,13 @@ fs.writeFileSync(path.join(planDir, reportName), planContent);
 
 fs.writeFileSync(path.join(analysisDir, reportName), `# CODE ANALYSIS\n\n${result.codeAnalysis}\n`);
 
-console.log(`\nReports saved:\n  reports/plan/${reportName}\n  reports/codeAnalysis/${reportName}`);
+const changedFilesList =
+  result.changedFiles.length === 0
+    ? "(none)"
+    : result.changedFiles.map((file: string) => `- ${file}`).join("\n");
+const implementationContent = `# IMPLEMENTATION\n\n${result.implementation}\n\n## Changed Files\n\n${changedFilesList}\n`;
+fs.writeFileSync(path.join(implementationDir, reportName), implementationContent);
+
+console.log(
+  `\nReports saved:\n  reports/01-plan/${reportName}\n  reports/02-codeAnalysis/${reportName}\n  reports/03-implementation/${reportName}`,
+);
