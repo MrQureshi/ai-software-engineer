@@ -1,6 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { execShellCommand } from "../../src/lib/execCommand.js";
+
 /**
  * Every tool/node under test resolves paths off process.cwd() (matching
  * how they always inspect the real project root in production, never a
@@ -39,4 +41,18 @@ export async function withProject(
 
 export function packageJson(scripts: Record<string, string>): string {
   return JSON.stringify({ name: "fixture", version: "1.0.0", scripts }, null, 2);
+}
+
+/**
+ * Initializes and commits an initial state in the *current* directory
+ * (call after `withProject` has already `chdir`'d into the fixture).
+ * Local config (email/name) is set on the fixture repo only — this
+ * never touches the caller's real git identity.
+ */
+export async function initGitRepo() {
+  await execShellCommand("git init -q");
+  await execShellCommand('git config user.email "fixture@example.com"');
+  await execShellCommand('git config user.name "Fixture"');
+  await execShellCommand("git add -A");
+  await execShellCommand('git commit -q -m "initial"');
 }

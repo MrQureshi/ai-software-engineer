@@ -85,6 +85,12 @@ console.log("====================\n");
 
 console.log(result.testReport);
 
+console.log("\n====================");
+console.log("REVIEW");
+console.log("====================\n");
+
+console.log(marked(result.reviewReport));
+
 // --- save reports ---
 
 const stopWords = new Set(["add", "a", "an", "the", "to", "my", "your", "our", "in", "on", "for", "of", "with", "and", "or"]);
@@ -103,12 +109,14 @@ const analysisDir = path.resolve("reports/02-codeAnalysis");
 const implementationDir = path.resolve("reports/03-implementation");
 const debuggingDir = path.resolve("reports/04-debugging");
 const testingDir = path.resolve("reports/05-testing");
+const reviewDir = path.resolve("reports/06-review");
 
 fs.mkdirSync(planDir, { recursive: true });
 fs.mkdirSync(analysisDir, { recursive: true });
 fs.mkdirSync(implementationDir, { recursive: true });
 fs.mkdirSync(debuggingDir, { recursive: true });
 fs.mkdirSync(testingDir, { recursive: true });
+fs.mkdirSync(reviewDir, { recursive: true });
 
 function nextSequenceNumber(...dirs: string[]): number {
   let highest = 0;
@@ -126,7 +134,7 @@ function nextSequenceNumber(...dirs: string[]): number {
 }
 
 const sequence = String(
-  nextSequenceNumber(planDir, analysisDir, implementationDir, debuggingDir, testingDir),
+  nextSequenceNumber(planDir, analysisDir, implementationDir, debuggingDir, testingDir, reviewDir),
 ).padStart(2, "0");
 const reportName = `${sequence}-${topic}.md`;
 
@@ -146,6 +154,8 @@ fs.writeFileSync(path.join(debuggingDir, reportName), `# DEBUGGING\n\n${result.d
 
 fs.writeFileSync(path.join(testingDir, reportName), `# TEST RESULTS\n\n${result.testReport}\n`);
 
+fs.writeFileSync(path.join(reviewDir, reportName), `# REVIEW\n\n${result.reviewReport}\n`);
+
 console.log(
-  `\nReports saved:\n  reports/01-plan/${reportName}\n  reports/02-codeAnalysis/${reportName}\n  reports/03-implementation/${reportName}\n  reports/04-debugging/${reportName}\n  reports/05-testing/${reportName}`,
+  `\nReports saved:\n  reports/01-plan/${reportName}\n  reports/02-codeAnalysis/${reportName}\n  reports/03-implementation/${reportName}\n  reports/04-debugging/${reportName}\n  reports/05-testing/${reportName}\n  reports/06-review/${reportName}`,
 );
