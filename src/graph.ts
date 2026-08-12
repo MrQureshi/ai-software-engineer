@@ -8,6 +8,7 @@ import { plannerNode } from "./nodes/planner.js";
 import { codeAnalystNode, MAX_ANALYSIS_ITERATIONS } from "./nodes/codeAnalyst.js";
 import { implementationNode, MAX_IMPLEMENTATION_ITERATIONS } from "./nodes/implementation.js";
 import { debuggerNode, MAX_DEBUG_ITERATIONS } from "./nodes/debugger.js";
+import { testerNode } from "./nodes/tester.js";
 
 import { listFilesTool } from "./tools/listFiles.js";
 import { readFileTool } from "./tools/readFile.js";
@@ -46,7 +47,7 @@ function shouldContinueImplementation(state: typeof SoftwareEngineerState.State)
 }
 
 function shouldContinueDebug(state: typeof SoftwareEngineerState.State) {
-  return hasPendingToolCalls(state) ? "debugTools" : END;
+  return hasPendingToolCalls(state) ? "debugTools" : "tester";
 }
 
 const graph = new StateGraph(SoftwareEngineerState)
@@ -66,6 +67,8 @@ const graph = new StateGraph(SoftwareEngineerState)
   .addNode("debugger", debuggerNode)
 
   .addNode("debugTools", debugToolNode)
+
+  .addNode("tester", testerNode)
 
   .addNode("inspectRepository", inspectRepositoryNode)
 
@@ -91,10 +94,12 @@ const graph = new StateGraph(SoftwareEngineerState)
 
   .addConditionalEdges("debugger", shouldContinueDebug, {
     debugTools: "debugTools",
-    [END]: END,
+    tester: "tester",
   })
 
-  .addEdge("debugTools", "debugger");
+  .addEdge("debugTools", "debugger")
+
+  .addEdge("tester", END);
 
 export const softwareEngineer = graph.compile();
 
@@ -104,7 +109,7 @@ export const softwareEngineer = graph.compile();
  * automatically aware of, any loop's own iteration cap. Each pass
  * through a loop costs 2 steps (the looping node + its tool node), so
  * the worst case across all three loops is:
- *   planner + inspectRepository (2, non-looping)
+ *   planner + inspectRepository + tester (3, non-looping)
  *   + 2 * MAX_ANALYSIS_ITERATIONS
  *   + 2 * MAX_IMPLEMENTATION_ITERATIONS
  *   + 2 * MAX_DEBUG_ITERATIONS
@@ -114,7 +119,7 @@ export const softwareEngineer = graph.compile();
  * small safety margin) rather than left at the default.
  */
 export const RECURSION_LIMIT =
-  2 +
+  3 +
   2 * MAX_ANALYSIS_ITERATIONS +
   2 * MAX_IMPLEMENTATION_ITERATIONS +
   2 * MAX_DEBUG_ITERATIONS +

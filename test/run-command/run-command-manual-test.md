@@ -52,16 +52,21 @@ relative to the root:
 
 ```bash
 npx tsx -e '
-import { runCommandTool } from "./src/tools/runCommand.ts";
+(async () => {
+  const { runCommandTool } = await import("./src/tools/runCommand.ts");
 
-console.log(await runCommandTool.invoke({ command: "npx tsc --noEmit" }));
-console.log("---");
-console.log(await runCommandTool.invoke({ command: "npm run lint" }));
+  console.log(await runCommandTool.invoke({ command: "npx tsc --noEmit" }));
+  console.log("---");
+  console.log(await runCommandTool.invoke({ command: "npm run lint" }));
+})();
 '
 ```
 
-(If your shell rejects multi-line `-e` strings, save the block to a
-`.mts` file and run it with `npx tsx <file>` instead — see
+(`tsx -e` cannot run a top-level `await` alongside a static `import` —
+it fails with `Top-level await is currently not supported with the
+"cjs" output format` regardless of shell. The async-IIFE-plus-dynamic-
+`import()` form above sidesteps that; alternatively, save the block to
+a `.mts` file and run it with `npx tsx <file>` — see
 `test/run-command/run-command-test.mts` for the working import style.)
 
 Expected: the `tsc` call returns `Exit code: 0` with no output (a clean
@@ -80,8 +85,10 @@ you want to verify it by hand, again from the **project root**:
 
 ```bash
 npx tsx -e '
-import { runCommandTool } from "./src/tools/runCommand.ts";
-console.log(await runCommandTool.invoke({ command: "sleep 130" }));
+(async () => {
+  const { runCommandTool } = await import("./src/tools/runCommand.ts");
+  console.log(await runCommandTool.invoke({ command: "sleep 130" }));
+})();
 '
 ```
 

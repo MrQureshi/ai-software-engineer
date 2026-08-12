@@ -63,16 +63,21 @@ project, so it's safe to run repeatedly:
 
 ```bash
 npx tsx -e '
-import { writeFileTool } from "./src/tools/writeFile.ts";
-import { editFileTool } from "./src/tools/editFile.ts";
+(async () => {
+  const { writeFileTool } = await import("./src/tools/writeFile.ts");
+  const { editFileTool } = await import("./src/tools/editFile.ts");
 
-const p = "/tmp/manual-write-edit-check.txt";
-console.log(await writeFileTool.invoke({ path: p, content: "hello\n" }));
-console.log(await editFileTool.invoke({ path: p, oldString: "hello", newString: "hello world" }));
+  const p = "/tmp/manual-write-edit-check.txt";
+  console.log(await writeFileTool.invoke({ path: p, content: "hello\n" }));
+  console.log(await editFileTool.invoke({ path: p, oldString: "hello", newString: "hello world" }));
+})();
 '
 ```
-(If your shell rejects multi-line `-e` strings, save the block to a
-`.mts` file and run it with `npx tsx <file>` instead — see
+(`tsx -e` cannot run a top-level `await` alongside a static `import` —
+it fails with `Top-level await is currently not supported with the
+"cjs" output format` regardless of shell. The async-IIFE-plus-dynamic-
+`import()` form above sidesteps that; alternatively, save the block to
+a `.mts` file and run it with `npx tsx <file>` — see
 `test/write-edit/run-write-edit-test.mts` for the working import style.)
 
 Expected output: a `Wrote <n> bytes to /tmp/manual-write-edit-check.txt`
