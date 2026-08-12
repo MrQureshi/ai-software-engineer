@@ -41,5 +41,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": ["test/fixtures/**"]
+  "exclude": ["test/search-code/fixtures/**"]
 }

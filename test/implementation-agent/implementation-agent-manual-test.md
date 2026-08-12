@@ -3,13 +3,13 @@
 This walks through testing the Implementation Agent end-to-end — the
 full graph, not just the individual tools. For tool-level tests of
 `write_file`/`edit_file` in isolation (no LLM, no graph), see
-[`write-edit-manual-test.md`](./write-edit-manual-test.md) first; this
+[`write-edit-manual-test.md`](../write-edit/write-edit-manual-test.md) first; this
 doc assumes those already pass.
 
 Spec references:
-[`12-code-modification-spec.md`](../docs/12-code-modification-spec.md),
-[`15-implementation-agent-node-spec.md`](../docs/15-implementation-agent-node-spec.md),
-[`04-graph-spec.md`](../docs/04-graph-spec.md).
+[`12-code-modification-spec.md`](../../docs/12-code-modification-spec.md),
+[`15-implementation-agent-node-spec.md`](../../docs/15-implementation-agent-node-spec.md),
+[`04-graph-spec.md`](../../docs/04-graph-spec.md).
 
 ---
 
@@ -115,7 +115,7 @@ requests you'll likely see it. When you do, it's a **pass**, not a bug:
 followed by a successful tool call on the next line. **Fail** would be
 the process crashing instead — if that happens, it's a regression in
 `src/lib/invokeWithRetry.ts`, not expected behavior. See
-[`04-graph-spec.md`](../docs/04-graph-spec.md) §6.
+[`04-graph-spec.md`](../../docs/04-graph-spec.md) §6.
 
 ---
 
@@ -167,7 +167,7 @@ them only if you want to reset the numbering sequence back down.
 
 ```bash
 # Tool-level tests first (no LLM, no graph) — see write-edit-manual-test.md
-npx tsx test/run-write-edit-test.mts
+npx tsx test/write-edit/run-write-edit-test.mts
 
 # Full feature test (real model, real graph, real file writes)
 npm start

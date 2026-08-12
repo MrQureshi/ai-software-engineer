@@ -5,9 +5,9 @@ order, to install this project, run it for the first time, understand
 what each feature does, and manually verify every part of it works.
 
 For deep-dive tests of individual pieces, this doc links out to:
-- [`search-code-manual-test.md`](./search-code-manual-test.md) — `search_code` tool
-- [`write-edit-manual-test.md`](./write-edit-manual-test.md) — `write_file`/`edit_file` tools
-- [`implementation-agent-manual-test.md`](./implementation-agent-manual-test.md) — the Implementation Agent through the full graph
+- [`search-code-manual-test.md`](./search-code/search-code-manual-test.md) — `search_code` tool
+- [`write-edit-manual-test.md`](./write-edit/write-edit-manual-test.md) — `write_file`/`edit_file` tools
+- [`implementation-agent-manual-test.md`](./implementation-agent/implementation-agent-manual-test.md) — the Implementation Agent through the full graph
 
 Architecture reference: [`docs/01-ai-software-engineer-plan.md`](../docs/01-ai-software-engineer-plan.md)
 and [`docs/02-implemented-components-spec.md`](../docs/02-implemented-components-spec.md)
@@ -119,7 +119,7 @@ malformed tool call.
 (not generic advice).
 
 Manual test for the tool this stage relies on most:
-[`search-code-manual-test.md`](./search-code-manual-test.md).
+[`search-code-manual-test.md`](./search-code/search-code-manual-test.md).
 
 ### Feature 4 — Implementation Agent (real file changes)
 
@@ -134,9 +134,9 @@ with no confirmation step.**
 summary) and `CHANGED FILES` (the actual paths it touched) sections.
 
 Manual tests for this stage:
-[`write-edit-manual-test.md`](./write-edit-manual-test.md) (tools in
+[`write-edit-manual-test.md`](./write-edit/write-edit-manual-test.md) (tools in
 isolation) and
-[`implementation-agent-manual-test.md`](./implementation-agent-manual-test.md)
+[`implementation-agent-manual-test.md`](./implementation-agent/implementation-agent-manual-test.md)
 (through the real graph).
 
 ### Feature 5 — Reports
@@ -191,15 +191,15 @@ the graph — fast, free, deterministic. Run all of them:
 
 ```bash
 # search_code — 6 fixture-based checks (see search-code-manual-test.md for details)
-npx tsx test/run-search-code.mts "createStore" test/fixtures/sample-project
+npx tsx test/search-code/run-search-code.mts "createStore" test/search-code/fixtures/sample-project
 
 # write_file / edit_file — 11 automated checks in a temp directory
-npx tsx test/run-write-edit-test.mts
+npx tsx test/write-edit/run-write-edit-test.mts
 ```
 
 **Pass criteria:** the `write_file`/`edit_file` suite ends with
 `11 passed, 0 failed`. For `search_code`, walk through all 6 steps in
-[`search-code-manual-test.md`](./search-code-manual-test.md) — each has
+[`search-code-manual-test.md`](./search-code/search-code-manual-test.md) — each has
 its own expected output documented there.
 
 ---
@@ -226,8 +226,8 @@ git status --short
 git diff
 
 # --- Part 4: Tool-level tests (no LLM) ---
-npx tsx test/run-search-code.mts "createStore" test/fixtures/sample-project
-npx tsx test/run-write-edit-test.mts
+npx tsx test/search-code/run-search-code.mts "createStore" test/search-code/fixtures/sample-project
+npx tsx test/write-edit/run-write-edit-test.mts
 ```
 
 ---

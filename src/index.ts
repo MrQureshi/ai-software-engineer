@@ -64,6 +64,12 @@ console.log("====================\n");
 console.log(marked(result.implementation));
 
 console.log("\n====================");
+console.log("DEBUGGING");
+console.log("====================\n");
+
+console.log(marked(result.debugReport));
+
+console.log("\n====================");
 console.log("CHANGED FILES");
 console.log("====================\n");
 
@@ -89,10 +95,12 @@ const topic = userRequest
 const planDir = path.resolve("reports/01-plan");
 const analysisDir = path.resolve("reports/02-codeAnalysis");
 const implementationDir = path.resolve("reports/03-implementation");
+const debuggingDir = path.resolve("reports/04-debugging");
 
 fs.mkdirSync(planDir, { recursive: true });
 fs.mkdirSync(analysisDir, { recursive: true });
 fs.mkdirSync(implementationDir, { recursive: true });
+fs.mkdirSync(debuggingDir, { recursive: true });
 
 function nextSequenceNumber(...dirs: string[]): number {
   let highest = 0;
@@ -110,7 +118,7 @@ function nextSequenceNumber(...dirs: string[]): number {
 }
 
 const sequence = String(
-  nextSequenceNumber(planDir, analysisDir, implementationDir),
+  nextSequenceNumber(planDir, analysisDir, implementationDir, debuggingDir),
 ).padStart(2, "0");
 const reportName = `${sequence}-${topic}.md`;
 
@@ -126,6 +134,8 @@ const changedFilesList =
 const implementationContent = `# IMPLEMENTATION\n\n${result.implementation}\n\n## Changed Files\n\n${changedFilesList}\n`;
 fs.writeFileSync(path.join(implementationDir, reportName), implementationContent);
 
+fs.writeFileSync(path.join(debuggingDir, reportName), `# DEBUGGING\n\n${result.debugReport}\n`);
+
 console.log(
-  `\nReports saved:\n  reports/01-plan/${reportName}\n  reports/02-codeAnalysis/${reportName}\n  reports/03-implementation/${reportName}`,
+  `\nReports saved:\n  reports/01-plan/${reportName}\n  reports/02-codeAnalysis/${reportName}\n  reports/03-implementation/${reportName}\n  reports/04-debugging/${reportName}`,
 );

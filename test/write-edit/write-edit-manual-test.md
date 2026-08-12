@@ -5,8 +5,8 @@ This walks through testing `write_file` and `edit_file`
 needing to invoke the LLM.
 
 Spec references:
-[`13-write-file-tool-spec.md`](../docs/13-write-file-tool-spec.md),
-[`14-edit-file-tool-spec.md`](../docs/14-edit-file-tool-spec.md).
+[`13-write-file-tool-spec.md`](../../docs/13-write-file-tool-spec.md),
+[`14-edit-file-tool-spec.md`](../../docs/14-edit-file-tool-spec.md).
 
 ---
 
@@ -22,10 +22,10 @@ Spec references:
 ## 1. Automated Check (Section 2) vs. Fixtures (search_code)
 
 Unlike `search_code`'s manual test, this one does **not** use committed
-fixture files under `test/fixtures/` — `write_file`/`edit_file` mutate
+fixture files under `test/search-code/fixtures/` — `write_file`/`edit_file` mutate
 whatever they touch, so a fixed, version-controlled fixture would get
 overwritten by the very test that's supposed to verify it. Instead,
-`test/run-write-edit-test.mts` creates a **fresh temporary directory**
+`test/write-edit/run-write-edit-test.mts` creates a **fresh temporary directory**
 (via `fs.mkdtemp`, outside the project entirely) for every run, and
 deletes it afterward — so the test is both deterministic and leaves
 nothing behind to clean up manually.
@@ -35,7 +35,7 @@ nothing behind to clean up manually.
 ## 2. Running the Automated Suite
 
 ```bash
-npx tsx test/run-write-edit-test.mts
+npx tsx test/write-edit/run-write-edit-test.mts
 ```
 
 This runs 11 checks end-to-end and prints `PASS`/`FAIL` per check, plus a
@@ -57,8 +57,9 @@ Expected final line: `11 passed, 0 failed`.
 ## 3. Manual Spot-Check (optional)
 
 If you want to see the tools' output shape yourself rather than just
-trusting the automated checks, run this from the project root — it
-writes into `/tmp`, not the project, so it's safe to run repeatedly:
+trusting the automated checks, run this from the **project root** (not
+from inside `test/write-edit/`) — it writes into `/tmp`, not the
+project, so it's safe to run repeatedly:
 
 ```bash
 npx tsx -e '
@@ -72,7 +73,7 @@ console.log(await editFileTool.invoke({ path: p, oldString: "hello", newString: 
 ```
 (If your shell rejects multi-line `-e` strings, save the block to a
 `.mts` file and run it with `npx tsx <file>` instead — see
-`test/run-write-edit-test.mts` for the working import style.)
+`test/write-edit/run-write-edit-test.mts` for the working import style.)
 
 Expected output: a `Wrote <n> bytes to /tmp/manual-write-edit-check.txt`
 line, then an `Edited /tmp/manual-write-edit-check.txt` line.
@@ -112,7 +113,7 @@ cat src/tools/formatBytes.ts
 **Known limitation:** as with `search_code`, the model occasionally
 supplies invalid tool-call arguments. This is caught and retried rather
 than crashing the process (see
-[`04-graph-spec.md`](../docs/04-graph-spec.md) §6) — a console line like
+[`04-graph-spec.md`](../../docs/04-graph-spec.md) §6) — a console line like
 `[Implementation Agent] Invalid tool call from model (attempt 1/2): ...`
 followed by a successful retry is this recovery working as intended, not
 a defect.
@@ -128,7 +129,7 @@ to see everything it touched).
 
 ```bash
 # Automated suite (safe, uses a temp directory, cleans up after itself)
-npx tsx test/run-write-edit-test.mts
+npx tsx test/write-edit/run-write-edit-test.mts
 
 # Full agent check (writes real files in this repo — review with git status/git diff after)
 npm start

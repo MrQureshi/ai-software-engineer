@@ -43,7 +43,7 @@ export const MAX_IMPLEMENTATION_ITERATIONS = 10;
  * tool's own result string indicates success (write_file/edit_file both
  * return a descriptive error string, not a thrown exception, on failure).
  */
-function extractChangedFiles(messages: BaseMessage[]): string[] {
+export function extractChangedFiles(messages: BaseMessage[]): string[] {
   const toolCallsById = new Map<string, { name: string; path: unknown }>();
 
   for (const message of messages) {

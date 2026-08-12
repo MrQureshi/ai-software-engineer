@@ -2,8 +2,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { writeFileTool } from "../src/tools/writeFile.js";
-import { editFileTool } from "../src/tools/editFile.js";
+import { writeFileTool } from "../../src/tools/writeFile.js";
+import { editFileTool } from "../../src/tools/editFile.js";
 
 let passed = 0;
 let failed = 0;
